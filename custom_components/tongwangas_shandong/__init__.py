@@ -1,135 +1,273 @@
-"""The 山东港华燃气 integration."""
+"""山东港华燃气集成 — 费用、余额、用气数据查询。
+
+每个户号（subsId）作为一个 HA 设备，包含 7 个传感器实体。
+token 同时保存在 config entry data 和 .storage 本地文件中，确保重启不丢失。
+"""
+
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
-DOMAIN = "tongwangas_shandong"
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+from .api import AuthError, TongwangasShandongApi
+from .config_flow import _async_load_token_file, _async_save_token_file
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_HOST,
+    CONF_MOBILE,
+    CONF_ORG_ID,
+    CONF_REFRESH_TOKEN,
+    CONF_SCAN_INTERVAL,
+    CONF_SIGN,
+    CONF_SUBS,
+    CONF_TOKEN_CREATE_TIME,
+    CONF_TOKEN_REFRESH_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TOKEN_REFRESH_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
+
+type TongwangasShandongConfigEntry = ConfigEntry
 
 
-class TongwangasCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """自定义数据更新协调器（严格对齐 request.md 规范）."""
+async def async_setup_entry(
+    hass: HomeAssistant, entry: TongwangasShandongConfigEntry,
+) -> bool:
+    """设置山东港华燃气集成。"""
+    data = entry.data
+    host = data.get(CONF_HOST, "")
+    org_id = data.get(CONF_ORG_ID, "")
+    mobile = data.get(CONF_MOBILE, "")
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-    ) -> None:
-        """初始化 Coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=timedelta(hours=1),
-        )
-        self.entry = entry
-        self.session = async_get_clientsession(hass)
+    # 尝试从本地文件恢复 token（优先使用 config entry 中的值）
+    access_token = data.get(CONF_ACCESS_TOKEN, "")
+    refresh_token = data.get(CONF_REFRESH_TOKEN, "")
+    token_create_time = data.get(CONF_TOKEN_CREATE_TIME, 0)
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        """发起符合 request.md 规范的 GET 请求."""
-        host = self.entry.data.get("host", "").rstrip("/")
-        org_id = self.entry.data.get("org_id", "")
-        access_token = self.entry.data.get("access_token", "")
-        refresh_token = self.entry.data.get("refresh_token", "")
-        sign = self.entry.data.get("sign", "")
+    # 如果 config entry 中没有 token，尝试从本地文件加载
+    if (not access_token or not refresh_token) and mobile:
+        file_data = await _async_load_token_file(hass, mobile)
+        if file_data:
+            access_token = access_token or file_data.get(CONF_ACCESS_TOKEN, "")
+            refresh_token = refresh_token or file_data.get(CONF_REFRESH_TOKEN, "")
+            token_create_time = token_create_time or file_data.get(
+                CONF_TOKEN_CREATE_TIME, 0,
+            )
 
-        # 拼接基础 URL
-        if not host.startswith("http://") and not host.startswith("https://"):
-            url = f"https://{host}/api/v1/gas/balance"  # TODO: 若相对路径不同，请在此修改
-        else:
-            url = f"{host}/api/v1/gas/balance"
+    session = async_get_clientsession(hass, verify_ssl=False)
 
-        # 1. Header 仅保留 Authorization 认证头
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
-        }
-
-        # 2. 将凭证与签名作为 URL Query Parameters (requestParam)
-        params = {
-            "access-token": access_token or "",
-            "refresh-token": refresh_token or "",
-            "sign": sign or "",
-            "org_id": org_id or "",
-        }
-
-        _LOGGER.debug(
-            "[GET Request] 正在请求 -> URL: %s\nHeaders: %s\nParams: %s",
-            url,
-            headers,
-            params,
-        )
-
-        try:
-            # 传入 params 参数，aiohttp 会自动将其拼接到 URL 查询串后
-            async with self.session.get(url, headers=headers, params=params, timeout=15) as response:
-                status_code = response.status
-                response_text = await response.text()
-
-                _LOGGER.debug(
-                    "[GET Response] HTTP Code: %s\nResponse Body: %s",
-                    status_code,
-                    response_text,
-                )
-
-                if status_code != 200:
-                    raise UpdateFailed(
-                        f"HTTP 请求失败, 状态码: {status_code}, 返回: {response_text}"
-                    )
-
-                res_json = await response.json()
-                data = res_json.get("data", {})
-                if not isinstance(data, dict):
-                    data = {"raw_response": res_json}
-
-                return data
-
-        except Exception as err:
-            _LOGGER.error("从港华燃气 API 获取数据时发生错误: %s", err, exc_info=True)
-            raise UpdateFailed(f"网络请求异常: {err}") from err
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """从 ConfigEntry 加载并初始化组件."""
-    hass.data.setdefault(DOMAIN, {})
-
-    org_id = entry.data.get("org_id")
-    org_name = entry.data.get("org_name")
-    host = entry.data.get("host")
-
-    _LOGGER.info(
-        "初始化山东港华燃气集成: org_id=%s, org_name=%s, host=%s",
-        org_id,
-        org_name,
-        host,
+    # 创建 API 客户端
+    api = TongwangasShandongApi(
+        session=session,
+        host=host,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        sign=data.get(CONF_SIGN, ""),
+        token_create_time=token_create_time,
     )
 
-    coordinator = TongwangasCoordinator(hass, entry)
-    await coordinator.async_config_entry_first_refresh()
+    # 获取刷新间隔配置
+    scan_interval = entry.options.get(
+        CONF_SCAN_INTERVAL,
+        entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+    )
+    token_refresh_interval = entry.options.get(
+        CONF_TOKEN_REFRESH_INTERVAL,
+        entry.data.get(CONF_TOKEN_REFRESH_INTERVAL, DEFAULT_TOKEN_REFRESH_INTERVAL),
+    )
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        "coordinator": coordinator,
-        "selected_subs": entry.data.get("selected_subs", []),
+    # 为每个户号创建独立的 coordinator
+    subs_list: list[dict[str, Any]] = data.get(CONF_SUBS, [])
+    coordinators: dict[str, DataUpdateCoordinator] = {}
+
+    for subs_info in subs_list:
+        subs_id = subs_info.get("subsId", "")
+        if not subs_id:
+            continue
+
+        coordinator = _create_coordinator(
+            hass, api, entry, org_id, subs_id, subs_info, scan_interval,
+        )
+        await coordinator.async_config_entry_first_refresh()
+        coordinators[subs_id] = coordinator
+
+    # ------------------------------------------------------------------
+    #  Token 定时刷新（独立于数据刷新）
+    # ------------------------------------------------------------------
+
+    def _schedule_token_refresh(delay: float) -> None:
+        """安排下一次 token 刷新。"""
+        entry.async_on_unload(async_call_later(hass, delay, _token_refresh_job))
+
+    async def _token_refresh_job(_now=None) -> None:
+        """定时刷新 token，成功后持久化，失败则触发重新认证。"""
+        try:
+            if await api.refresh_access_token():
+                # 刷新成功，保存 token
+                _persist_tokens(hass, entry, api)
+                if mobile:
+                    await _async_save_token_file(
+                        hass, mobile,
+                        api.access_token, api.refresh_token,
+                        api.token_create_time,
+                    )
+                _LOGGER.debug("定时 token 刷新成功, remain=%ss", api.bearer_remain)
+            else:
+                _LOGGER.warning("定时 token 刷新失败（网络问题），将在下次尝试")
+        except AuthError as err:
+            _LOGGER.warning("定时 token 刷新永久失败，需要重新配置: %s", err)
+            entry.async_start_reauth(hass)
+            return  # 不再安排下次刷新
+        _schedule_token_refresh(token_refresh_interval)
+
+    # 首次 token 刷新：取配置间隔和剩余有效时间的较小值
+    _first_delay = min(
+        token_refresh_interval, max(api.bearer_remain - 60, 60),
+    )
+    _schedule_token_refresh(_first_delay)
+
+    # 保存到 hass.data 供 sensor / button 平台使用
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "api": api,
+        "coordinators": coordinators,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """卸载配置条目."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+def _create_coordinator(
+    hass: HomeAssistant,
+    api: TongwangasShandongApi,
+    entry: ConfigEntry,
+    org_id: str,
+    subs_id: str,
+    subs_info: dict[str, Any],
+    scan_interval: int,
+) -> DataUpdateCoordinator:
+    """为单个户号创建 DataUpdateCoordinator。
 
-    return unload_ok
+    每次更新调用 3 个接口：gasFeeBaseinfo、gasConsumptionDataQuery、gasStepFee，
+    合并结果后返回供传感器使用。
+    """
+
+    async def _update() -> dict[str, Any]:
+        """拉取该户号的全部传感器数据。"""
+        _LOGGER.debug(
+            "coordinator 更新 — subs_id=%s token_remain=%ss bearer_valid=%s",
+            subs_id, api.bearer_remain, api.bearer_valid,
+        )
+
+        # 安全网：如果 token 已过期，先尝试刷新
+        if not api.bearer_valid:
+            try:
+                if not await api.refresh_access_token():
+                    _LOGGER.warning("token 刷新失败（网络问题），继续使用当前 token")
+            except AuthError as err:
+                raise ConfigEntryAuthFailed(str(err)) from err
+
+        try:
+            # 并发调用 3 个接口（无依赖关系）
+            fee_info, consumption_data, step_fee = await asyncio.gather(
+                api.get_gas_fee_baseinfo(org_id, subs_id),
+                api.get_gas_consumption_data(subs_id),
+                api.get_gas_step_fee(org_id, subs_id),
+                return_exceptions=True,
+            )
+        except Exception as err:
+            raise UpdateFailed(f"API 请求失败: {err}") from err
+
+        # 检查各接口返回是否有效
+        result: dict[str, Any] = {"subsId": subs_id}
+
+        # 费用信息
+        if isinstance(fee_info, dict) and fee_info.get("resultCode") == "0":
+            result["feePayable"] = fee_info.get("feePayable")
+            result["availableBalance"] = fee_info.get("availableBalance")
+            result["lastMeterReadingDate"] = fee_info.get("lastMeterReadingDate")
+        elif isinstance(fee_info, AuthError):
+            raise ConfigEntryAuthFailed(str(fee_info))
+        elif isinstance(fee_info, Exception):
+            _LOGGER.warning("gasFeeBaseinfo 请求失败: %s", fee_info)
+
+        # 用气记录
+        if isinstance(consumption_data, dict) and consumption_data.get("resultCode") == "0":
+            result["gasConsumptionTrendInfo"] = consumption_data.get(
+                "gasConsumptionTrendInfo", [],
+            )
+            result["gasConsumptionInfo"] = consumption_data.get(
+                "gasConsumptionInfo", [],
+            )
+        elif isinstance(consumption_data, AuthError):
+            raise ConfigEntryAuthFailed(str(consumption_data))
+        elif isinstance(consumption_data, Exception):
+            _LOGGER.warning("gasConsumptionDataQuery 请求失败: %s", consumption_data)
+
+        # 阶梯气价
+        if isinstance(step_fee, dict) and step_fee.get("resultCode") == "0":
+            datas = step_fee.get("datas", {})
+            if isinstance(datas, dict):
+                result["buyamount"] = datas.get("buyamount")
+                result["stepList"] = datas.get("stepList", [])
+        elif isinstance(step_fee, AuthError):
+            raise ConfigEntryAuthFailed(str(step_fee))
+        elif isinstance(step_fee, Exception):
+            _LOGGER.warning("gasStepFee 请求失败: %s", step_fee)
+
+        # 持久化 token（刷新后的新 token 写回 config entry）
+        _persist_tokens(hass, entry, api)
+
+        return result
+
+    return DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name=f"tongwangas_shandong_{subs_id[:8]}",
+        update_method=_update,
+        update_interval=timedelta(seconds=scan_interval),
+    )
+
+
+def _persist_tokens(
+    hass: HomeAssistant, entry: ConfigEntry, api: TongwangasShandongApi,
+) -> None:
+    """将刷新后的 token 写回 config entry data，确保重启后可用。"""
+    new_data = {**entry.data}
+    changed = False
+    for key, val in (
+        (CONF_ACCESS_TOKEN, api.access_token),
+        (CONF_REFRESH_TOKEN, api.refresh_token),
+        (CONF_TOKEN_CREATE_TIME, api.token_create_time),
+    ):
+        if new_data.get(key) != val:
+            new_data[key] = val
+            changed = True
+    if changed:
+        hass.config_entries.async_update_entry(entry, data=new_data)
+
+
+async def async_unload_entry(
+    hass: HomeAssistant, entry: TongwangasShandongConfigEntry,
+) -> bool:
+    """卸载 config entry。"""
+    ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if ok:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+    return ok

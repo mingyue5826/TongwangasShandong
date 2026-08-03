@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Gas Company",
+        "description": "Select your gas company from the list below.",
+        "data": {
+          "org_id": "Gas Company"
+        }
+      },
+      "auth": {
+        "title": "Enter Authentication Info",
+        "description": "Enter the access_token, refresh_token, and sign captured from the WeChat mini program. Selected company: {org_name}",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign"
+        }
+      },
+      "select_subs": {
+        "title": "Select Gas Accounts",
+        "description": "Select the gas accounts (meters) to add. Each account will be a separate device.",
+        "data": {
+          "subs_ids": "Gas Accounts"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "Your tokens have expired. Please re-enter your access_token, refresh_token, and sign. Company: {org_name}",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "Authentication failed. Please check your access_token, refresh_token, and sign.",
+      "no_subs": "No bound gas accounts found.",
+      "no_subs_selected": "Please select at least one gas account.",
+      "connect_error": "Connection failed. Please check your network."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "orglist_load_failed": "Failed to load orglist.json. Please check the file exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reconfigure",
+        "description": "Update your tokens and sign if they have expired. You can also adjust the data refresh interval.",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign",
+          "scan_interval": "Data Refresh Interval (seconds)",
+          "token_refresh_interval": "Token Refresh Interval (seconds)"
+        }
+      }
+    }
+  }
+}

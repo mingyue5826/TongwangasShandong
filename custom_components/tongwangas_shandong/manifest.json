@@ -3,9 +3,10 @@
   "name": "山东港华燃气",
   "codeowners": ["@mingyue5826"],
   "config_flow": true,
-  "documentation": "https://github.com/mingyue5826/TongwangasShandong",
+  "dependencies": [],
+  "documentation": "https://github.com/mingyue5826/tongwangas_shandong",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/mingyue5826/TongwangasShandong/issues",
+  "issue_tracker": "https://github.com/mingyue5826/tongwangas_shandong/issues",
   "requirements": [],
   "version": "1.0.0"
 }

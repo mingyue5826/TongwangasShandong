@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "选择燃气公司",
+        "description": "请从下方列表中选择您的燃气公司。",
+        "data": {
+          "org_id": "燃气公司"
+        }
+      },
+      "auth": {
+        "title": "输入认证信息",
+        "description": "请输入从微信小程序抓包获取的 access_token、refresh_token 和 sign。已选择公司：{org_name}",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign"
+        }
+      },
+      "select_subs": {
+        "title": "选择户号",
+        "description": "请选择要添加的户号（燃气表），每个户号将作为一个独立设备。",
+        "data": {
+          "subs_ids": "户号列表"
+        }
+      },
+      "reauth_confirm": {
+        "title": "重新认证",
+        "description": "您的 token 已失效，请重新输入 access_token、refresh_token 和 sign。燃气公司：{org_name}",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign"
+        }
+      }
+    },
+    "error": {
+      "auth_failed": "认证失败，请检查 access_token、refresh_token 和 sign 是否正确。",
+      "no_subs": "未找到绑定的户号。",
+      "no_subs_selected": "请至少选择一个户号。",
+      "connect_error": "连接失败，请检查网络。"
+    },
+    "abort": {
+      "already_configured": "该账号已配置。",
+      "orglist_load_failed": "读取 orglist.json 失败，请确认文件存在。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "重新配置",
+        "description": "如果 token 或 sign 已失效，请在此更新。也可调整数据刷新间隔。",
+        "data": {
+          "access_token": "Access Token",
+          "refresh_token": "Refresh Token",
+          "sign": "Sign",
+          "scan_interval": "数据刷新间隔（秒）",
+          "token_refresh_interval": "Token刷新间隔（秒）"
+        }
+      }
+    }
+  }
+}
