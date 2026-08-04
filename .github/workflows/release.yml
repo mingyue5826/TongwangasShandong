@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create HACS Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update manifest version
+        run: |
+          sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.version }}"/' \
+            custom_components/tongwangas_shandong/manifest.json
+
+      - name: Package integration
+        run: |
+          cd custom_components
+          zip -r ../tongwangas_shandong.zip tongwangas_shandong/
+          cd ..
+          echo "SHA256: $(sha256sum tongwangas_shandong.zip)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "TongwangasShandong ${{ github.ref_name }}"
+          body: |
+            ## 山东港华燃气 ${{ github.ref_name }}
+
+            山东港华燃气 Home Assistant 集成
+
+            ### 安装方式
+
+            [![Open your Home Assistant instance and add this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mingyue5826&repository=TongwangasShandong&category=integration)
+
+            **HACS(推荐)**：点上面的按钮一键添加，或者手动操作：在 HACS 中添加本仓库为自定义集成，搜索`山东港华燃气`安装。
+
+            **手动安装**：下载 `tongwangas_shandong.zip`，解压后将 `tongwangas_shandong/` 目录放入 HA 的 `config/custom_components/`，重启 HA 即可。
+          files: tongwangas_shandong.zip
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
