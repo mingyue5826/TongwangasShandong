@@ -75,10 +75,10 @@ class TongwangasShandongApi:
         self.token_expires_in = token_expires_in
         self._refresh_lock = asyncio.Lock()  # 防止并发刷新 token
         # 诊断日志：确认初始化参数
-        _LOGGER.info(
-            "[API Init] host=%s access_token=%s refresh_token=%s sign=%s token_create_time=%s",
-            self._host, bool(self.access_token), bool(self.refresh_token), bool(self.sign), self.token_create_time,
-        )
+        # _LOGGER.debug(
+        #     "[API Init] host=%s access_token=%s refresh_token=%s sign=%s token_create_time=%s",
+        #     self._host, bool(self.access_token), bool(self.refresh_token), bool(self.sign), self.token_create_time,
+        # )
 
     @staticmethod
     def _normalize_host(host: str) -> str:
@@ -101,20 +101,13 @@ class TongwangasShandongApi:
     def bearer_valid(self) -> bool:
         """access_token 是否仍然有效（提前 buffer 秒视为过期）。"""
         if not self.access_token or not self.token_create_time:
-            _LOGGER.info(
-                "[bearer_valid] 返回False: access_token=%s token_create_time=%s",
-                bool(self.access_token), self.token_create_time,
-            )
+            # _LOGGER.debug("[bearer_valid] 返回False: access_token=%s token_create_time=%s", bool(self.access_token), self.token_create_time)
             return False
         valid = (
             self.token_create_time + self.token_expires_in - TOKEN_EXPIRY_BUFFER_SECS
             > time.time()
         )
-        _LOGGER.info(
-            "[bearer_valid] valid=%s create_time=%s expires_in=%s buffer=%s now=%s",
-            valid, self.token_create_time, self.token_expires_in,
-            TOKEN_EXPIRY_BUFFER_SECS, time.time(),
-        )
+        # _LOGGER.debug("[bearer_valid] valid=%s create_time=%s expires_in=%s buffer=%s now=%s", valid, self.token_create_time, self.token_expires_in, TOKEN_EXPIRY_BUFFER_SECS, time.time())
         return valid
 
     @property
@@ -156,10 +149,7 @@ class TongwangasShandongApi:
             }
 
             # 打印请求日志
-            _LOGGER.debug(
-                "[refreshToken] 请求: method=POST url=%s headers=%s",
-                url, headers,
-            )
+            _LOGGER.debug("[refreshToken] 请求: method=POST url=%s headers=%s",url, headers,)
 
             try:
                 async with self._session.post(
@@ -167,48 +157,35 @@ class TongwangasShandongApi:
                 ) as resp:
                     # 所有接口正常调用 HTTP 响应码都是 200，但仍记录实际状态码
                     body = await resp.text()
-                    _LOGGER.debug(
-                        "[refreshToken] 响应: http_status=%s body=%s",
-                        resp.status, _truncate(body),
-                    )
+                    _LOGGER.debug("[refreshToken] 响应: http_status=%s body=%s",resp.status, _truncate(body),)
                     try:
                         data = json.loads(body) if body else {}
                     except json.JSONDecodeError:
                         _LOGGER.warning("[refreshToken] 响应体非 JSON: %s", _truncate(body))
                         return False
 
-                if isinstance(data, dict) and data.get("resultCode") == "0":
+                # refreshToken 接口正常响应没有 resultCode，直接包含 access_token 等字段
+                # 只有失效时才返回 resultCode=90143
+                if isinstance(data, dict) and "access_token" in data:
                     # 刷新成功，更新 token 信息
                     self.access_token = data.get("access_token", self.access_token)
                     self.refresh_token = data.get("refresh_token", self.refresh_token)
                     self.token_expires_in = data.get("expires_in", TOKEN_EXPIRES_IN)
                     self.token_create_time = time.time()
-                    _LOGGER.debug(
-                        "[refreshToken] 刷新成功, expires_in=%ss remain=%ss",
-                        self.token_expires_in, self.bearer_remain,
-                    )
+                    _LOGGER.debug("[refreshToken] 刷新成功, expires_in=%ss remain=%ss",self.token_expires_in, self.bearer_remain,)
                     return True
 
-                # resultCode 为 20001 或 90143 表示 refreshToken 失效，不可恢复
-                # 20001: access_token 过期且 refreshToken 也失效
-                # 90143: refreshToken 已失效
+                # resultCode=90143 表示 refreshToken 已失效，不可恢复
                 result_code = data.get("resultCode") if isinstance(data, dict) else None
-                if result_code in ("20001", "90143"):
-                    _LOGGER.warning(
-                        "[refreshToken] 认证失败: resultCode=%s msg=%s",
-                        result_code, data.get("resultMsg", ""),
-                    )
+                if result_code == "90143":
+                    _LOGGER.warning("[refreshToken] 认证失败: resultCode=%s msg=%s",result_code, data.get("resultMsg", ""),)
                     raise AuthError(
                         f"refreshToken 已失效: resultCode={result_code} "
                         f"msg={data.get('resultMsg', '')}"
                     )
 
-                # 其他非 0 的 resultCode
-                _LOGGER.warning(
-                    "[refreshToken] 返回异常 resultCode=%s: %s",
-                    data.get("resultCode") if isinstance(data, dict) else "non-dict",
-                    _truncate(data),
-                )
+                # 其他异常情况
+                _LOGGER.warning("[refreshToken] 返回异常: %s",_truncate(data) if data else "empty",)
                 return False
 
             except AuthError:
@@ -263,58 +240,39 @@ class TongwangasShandongApi:
 
         url, headers = _build()
 
-        # 打印请求日志
-        _LOGGER.debug(
-            "[CBS GET] 请求: method=GET path=%s url=%s headers=%s",
-            path, url, headers,
-        )
+        # _LOGGER.debug("[GET] 请求: method=GET path=%s url=%s headers=%s", path, url, headers)
 
         async with self._session.get(url, headers=headers, ssl=_SSL_CTX) as resp:
             # 所有接口正常调用 HTTP 响应码都是 200，但仍记录实际状态码
             body = await resp.text()
-            _LOGGER.debug(
-                "[CBS GET] 响应: path=%s http_status=%s body=%s",
-                path, resp.status, _truncate(body),
-            )
+            # _LOGGER.debug("[GET] 响应: path=%s http_status=%s body=%s", path, resp.status, _truncate(body))
             try:
                 data = json.loads(body) if body else {}
             except json.JSONDecodeError:
-                _LOGGER.warning("[CBS GET] 响应体非 JSON: path=%s body=%s", path, _truncate(body))
+                # _LOGGER.warning("[GET] 响应体非 JSON: path=%s body=%s", path, _truncate(body))
                 return {}
 
         result_code = data.get("resultCode") if isinstance(data, dict) else None
-        _LOGGER.debug("[CBS GET] path=%s resultCode=%s", path, result_code)
+        # _LOGGER.debug("[GET] path=%s resultCode=%s", path, result_code)
 
         # token 过期：刷新后重试一次
         if result_code == "20001":
-            _LOGGER.info(
-                "[CBS GET] 接口返回 token 过期(resultCode=20001)，刷新后重试: %s",
-                path,
-            )
+            _LOGGER.warning("[GET] 接口返回 token 过期(resultCode=20001)，刷新后重试: %s", path,)
             ok = await self.refresh_access_token()
             if not ok:
                 raise AuthError("access_token 过期且 refresh 失败")
             # 用新 token 重新构建 URL 并请求
             retry_url, retry_headers = _build()
-            _LOGGER.debug(
-                "[CBS GET] 重试请求: method=GET path=%s url=%s headers=%s",
-                path, retry_url, retry_headers,
-            )
+            # _LOGGER.debug("[GET] 重试请求: method=GET path=%s url=%s headers=%s", path, retry_url, retry_headers)
             async with self._session.get(
                 retry_url, headers=retry_headers, ssl=_SSL_CTX,
             ) as retry:
                 retry_body = await retry.text()
-                _LOGGER.debug(
-                    "[CBS GET] 重试响应: path=%s http_status=%s body=%s",
-                    path, retry.status, _truncate(retry_body),
-                )
+                # _LOGGER.debug("[GET] 重试响应: path=%s http_status=%s body=%s", path, retry.status, _truncate(retry_body))
                 try:
                     return json.loads(retry_body) if retry_body else {}
                 except json.JSONDecodeError:
-                    _LOGGER.warning(
-                        "[CBS GET] 重试响应体非 JSON: path=%s body=%s",
-                        path, _truncate(retry_body),
-                    )
+                    _LOGGER.warning("[GET] 重试响应体非 JSON: path=%s body=%s",path, _truncate(retry_body),)
                     return {}
 
         return data if isinstance(data, dict) else {}
@@ -328,7 +286,6 @@ class TongwangasShandongApi:
 
         用于 ConfigFlow 中获取 mobile（token 文件命名）和 userId。
         """
-        _LOGGER.debug("[API] 调用 getLoginUserInfo")
         return await self._cbs_get("/usersubs/getLoginUserInfo")
 
     async def query_bind_list(self, org_id: str) -> dict[str, Any]:
@@ -336,7 +293,6 @@ class TongwangasShandongApi:
 
         返回 datas 数组，包含用户下所有户号信息（subsId、displayAddr 等）。
         """
-        _LOGGER.debug("[API] 调用 queryBindList, orgId=%s", org_id)
         return await self._cbs_get(
             "/usersubs/queryBindList",
             {"isPay": "N", "orgId": org_id},
@@ -346,7 +302,6 @@ class TongwangasShandongApi:
         self, org_id: str, subs_id: str,
     ) -> dict[str, Any]:
         """获取费用信息（feePayable、availableBalance、lastMeterReadingDate）。"""
-        _LOGGER.debug("[API] 调用 gasFeeBaseinfo, orgId=%s subsId=%s", org_id, subs_id)
         return await self._cbs_get(
             "/charge/gasFeeBaseinfo",
             {"orgId": org_id, "subsId": subs_id},
@@ -356,7 +311,6 @@ class TongwangasShandongApi:
         self, subs_id: str,
     ) -> dict[str, Any]:
         """获取用气记录数据（gasConsumptionTrendInfo、gasConsumptionInfo）。"""
-        _LOGGER.debug("[API] 调用 gasConsumptionDataQuery, subsId=%s", subs_id)
         return await self._cbs_get(
             "/carelessWorkorder/gasConsumptionDataQuery",
             {"subsId": subs_id},
@@ -366,7 +320,6 @@ class TongwangasShandongApi:
         self, org_id: str, subs_id: str,
     ) -> dict[str, Any]:
         """查询阶梯气价（buyamount 本期费用、stepList 阶梯列表）。"""
-        _LOGGER.debug("[API] 调用 gasStepFee, orgId=%s subsId=%s", org_id, subs_id)
         return await self._cbs_get(
             "/charge/gasStepFee",
             {"orgId": org_id, "subsId": subs_id},

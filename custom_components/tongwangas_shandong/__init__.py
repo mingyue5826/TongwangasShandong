@@ -15,7 +15,6 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import (
@@ -167,13 +166,16 @@ def _create_coordinator(
     每次更新调用 3 个接口：gasFeeBaseinfo、gasConsumptionDataQuery、gasStepFee，
     合并结果后返回供传感器使用。
     """
+    # 标记是否已触发 reauth，避免重复触发
+    _reauth_triggered = False
+    # 缓存上次成功的数据，reauth 时返回以保持实体状态
+    _last_data: dict[str, Any] = {}
 
     async def _update() -> dict[str, Any]:
         """拉取该户号的全部传感器数据。"""
-        _LOGGER.debug(
-            "coordinator 更新 — subs_id=%s token_remain=%ss bearer_valid=%s",
-            subs_id, api.bearer_remain, api.bearer_valid,
-        )
+        nonlocal _reauth_triggered, _last_data
+
+        #_LOGGER.debug("coordinator 更新 — subs_id=%s token_remain=%ss bearer_valid=%s",subs_id, api.bearer_remain, api.bearer_valid,)
 
         # 安全网：如果 token 已过期，先尝试刷新
         if not api.bearer_valid:
@@ -181,7 +183,13 @@ def _create_coordinator(
                 if not await api.refresh_access_token():
                     _LOGGER.warning("token 刷新失败（网络问题），继续使用当前 token")
             except AuthError as err:
-                raise ConfigEntryAuthFailed(str(err)) from err
+                # refreshToken 失效，触发 reauth 但保持实体数据不变
+                if not _reauth_triggered:
+                    _LOGGER.warning("refreshToken 失效，触发重新认证: %s", err)
+                    entry.async_start_reauth(hass)
+                    _reauth_triggered = True
+                # 返回上次缓存数据，实体保持当前状态
+                return _last_data
 
         try:
             # 并发调用 3 个接口（无依赖关系）
@@ -203,7 +211,12 @@ def _create_coordinator(
             result["availableBalance"] = fee_info.get("availableBalance")
             result["lastMeterReadingDate"] = fee_info.get("lastMeterReadingDate")
         elif isinstance(fee_info, AuthError):
-            raise ConfigEntryAuthFailed(str(fee_info))
+            # refreshToken 失效，触发 reauth 但保持实体数据不变
+            if not _reauth_triggered:
+                _LOGGER.warning("refreshToken 失效，触发重新认证: %s", fee_info)
+                entry.async_start_reauth(hass)
+                _reauth_triggered = True
+            return _last_data
         elif isinstance(fee_info, Exception):
             _LOGGER.warning("gasFeeBaseinfo 请求失败: %s", fee_info)
 
@@ -216,7 +229,11 @@ def _create_coordinator(
                 "gasConsumptionInfo", [],
             )
         elif isinstance(consumption_data, AuthError):
-            raise ConfigEntryAuthFailed(str(consumption_data))
+            if not _reauth_triggered:
+                _LOGGER.warning("refreshToken 失效，触发重新认证: %s", consumption_data)
+                entry.async_start_reauth(hass)
+                _reauth_triggered = True
+            return _last_data
         elif isinstance(consumption_data, Exception):
             _LOGGER.warning("gasConsumptionDataQuery 请求失败: %s", consumption_data)
 
@@ -227,13 +244,19 @@ def _create_coordinator(
                 result["buyamount"] = datas.get("buyamount")
                 result["stepList"] = datas.get("stepList", [])
         elif isinstance(step_fee, AuthError):
-            raise ConfigEntryAuthFailed(str(step_fee))
+            if not _reauth_triggered:
+                _LOGGER.warning("refreshToken 失效，触发重新认证: %s", step_fee)
+                entry.async_start_reauth(hass)
+                _reauth_triggered = True
+            return _last_data
         elif isinstance(step_fee, Exception):
             _LOGGER.warning("gasStepFee 请求失败: %s", step_fee)
 
         # 持久化 token（刷新后的新 token 写回 config entry）
         _persist_tokens(hass, entry, api)
 
+        # 缓存本次成功的数据，供 reauth 时返回
+        _last_data = result
         return result
 
     return DataUpdateCoordinator(
