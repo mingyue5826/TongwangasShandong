@@ -4,7 +4,7 @@
 - 应缴费用 (feePayable)
 - 可用余额 (availableBalance)
 - 上次抄表日期 (lastMeterReadingDate)
-- 本期费用 (buyamount)
+- 今年累计用气量 (buyamount)
 - 阶梯气价 (stepList) — 状态固定"正常"，attributes.graph 为阶梯列表
 - 用气趋势 (gasConsumptionTrendInfo) — 状态固定"图表"，attributes.graph 为趋势数据
 - 用气明细 (gasConsumptionInfo) — 状态固定"图表"，attributes.graph 为用气记录
@@ -18,7 +18,10 @@ from typing import Any
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
+    SensorDeviceClass,
 )
+from homeassistant.const import UnitOfVolume
+from datetime import datetime
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -26,6 +29,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util.dt import get_time_zone
 
 from .const import (
     DOMAIN,
@@ -67,11 +71,13 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
     {
         "key": "buy_amount",
         "data_key": "buyamount",
-        "name": "本期费用",
+        "name": "今年累计用气量",
         "icon": "mdi:cash-multiple",
-        "device_class": None,
-        "unit": "元",
-        "state_class": SensorStateClass.MEASUREMENT,
+        "device_class": SensorDeviceClass.GAS,
+        "unit": UnitOfVolume.CUBIC_METERS,
+        "state_class": SensorStateClass.TOTAL,
+        # 新增：年度统计重置时间，state_class=TOTAL强制依赖
+        "reset_cycle": "year"
     },
     {
         "key": "step_list",
@@ -216,6 +222,20 @@ class TongwangasShandongSensor(CoordinatorEntity, SensorEntity):
 
         # 日期类传感器：直接返回字符串
         return raw
+
+    # 重写 last_reset 属性，默认为 None；配置中有 reset_cycle 时，返回指定周期的开始时间
+    @property
+    def last_reset(self) -> datetime | None:
+        cycle = self._config.get("reset_cycle")
+        now = datetime.now()
+        local_tz = get_time_zone(self.hass.config.time_zone)
+        if cycle == "year": # 年度：当年1月1日
+            return datetime(now.year, 1, 1, 0, 0, tzinfo=local_tz)
+        elif cycle == "month": # 月度：当月1日
+            return datetime(now.year, now.month, 1, 0, 0, tzinfo=local_tz)
+        elif cycle == "day": # 每日：当天0点
+            return datetime(now.year, now.month, now.day, 0, 0, tzinfo=local_tz)
+        return None
 
     # ------------------------------------------------------------------
     #  额外属性（图表类传感器，返回真实 list 数据用于 HA 生成图表）
