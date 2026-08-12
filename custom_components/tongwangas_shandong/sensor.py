@@ -45,10 +45,21 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
         "key": "gas_total",
         "data_key": "gas_total",
         "name": "累计用气量",
-        "icon": "mdi:cash-multiple",
+        "icon": "mdi:meter-gas",
         "device_class": SensorDeviceClass.GAS,
         "unit": UnitOfVolume.CUBIC_METERS,
         "state_class": SensorStateClass.TOTAL_INCREASING,
+    },
+    {
+        "key": "gas_total_yearly",
+        "data_key": "gas_total_yearly",
+        "name": "今年累计用气量",
+        "icon": "mdi:meter-gas",
+        "device_class": SensorDeviceClass.GAS,
+        "unit": UnitOfVolume.CUBIC_METERS,
+        "state_class": SensorStateClass.TOTAL,
+        # 新增：年度统计重置时间，state_class=TOTAL强制依赖
+        "reset_cycle": "year"
     },
     {
         "key": "fee_payable",
@@ -76,17 +87,6 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
         "device_class": None,
         "unit": None,
         "state_class": None,
-    },
-    {
-        "key": "gas_total_yearly",
-        "data_key": "gas_total_yearly",
-        "name": "今年累计用气量",
-        "icon": "mdi:cash-multiple",
-        "device_class": SensorDeviceClass.GAS,
-        "unit": UnitOfVolume.CUBIC_METERS,
-        "state_class": SensorStateClass.TOTAL,
-        # 新增：年度统计重置时间，state_class=TOTAL强制依赖
-        "reset_cycle": "year"
     },
     {
         "key": "step_name",
