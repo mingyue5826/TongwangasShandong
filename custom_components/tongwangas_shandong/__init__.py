@@ -192,11 +192,12 @@ def _create_coordinator(
                 return _last_data
 
         try:
-            # 并发调用 3 个接口（无依赖关系）
-            fee_info, consumption_data, step_fee = await asyncio.gather(
+            # 并发调用 4 个接口（无依赖关系）
+            fee_info, consumption_data, step_fee, charge_precheck = await asyncio.gather(
                 api.get_gas_fee_baseinfo(org_id, subs_id),
                 api.get_gas_consumption_data(subs_id),
                 api.get_gas_step_fee(org_id, subs_id),
+                api.charge_precheck(org_id, subs_id),
                 return_exceptions=True,
             )
         except Exception as err:
@@ -241,8 +242,26 @@ def _create_coordinator(
         if isinstance(step_fee, dict) and step_fee.get("resultCode") == "0":
             datas = step_fee.get("datas", {})
             if isinstance(datas, dict):
-                result["buyamount"] = datas.get("buyamount")
-                result["stepList"] = datas.get("stepList", [])
+                # buyamount = datas.get("buyamount")
+                gas_total_yearly = float(datas.get("buyamount", 0))
+                step_list = datas.get("stepList", [])
+
+                current_step = None
+                for step in step_list:
+                    max_mount = step.get("maxMount")
+                    if max_mount is None:
+                        continue
+                    max_mount = float(max_mount)
+                    if max_mount == -1 or gas_total_yearly <= max_mount:
+                        current_step = step
+                        break
+                if current_step:
+                    _LOGGER.debug("命中阶梯：%s", current_step["stepName"])
+                    _LOGGER.debug("对应价格：%s", current_step["price"])
+                    result["step_name"] = current_step["stepName"]
+                    result["step_list"] = step_list
+
+                result["gas_total_yearly"] = gas_total_yearly
         elif isinstance(step_fee, AuthError):
             if not _reauth_triggered:
                 _LOGGER.warning("refreshToken 失效，触发重新认证: %s", step_fee)
@@ -251,6 +270,30 @@ def _create_coordinator(
             return _last_data
         elif isinstance(step_fee, Exception):
             _LOGGER.warning("gasStepFee 请求失败: %s", step_fee)
+
+        # 缴费预检查接口
+        if isinstance(charge_precheck, dict) and charge_precheck.get("resultCode") == "0":
+            datas = charge_precheck.get("datas", {})
+            if isinstance(datas, dict) :
+                readingRptList = datas.get("readingRptList", [])
+                maxReading = 0
+                for reading in readingRptList:
+                    if float(reading["currReading"]) > maxReading:
+                        maxReading = float(reading["currReading"])
+                _LOGGER.debug("当前表读数：%s", maxReading)
+                if maxReading > 0:
+                    result["gas_total"] = maxReading
+                else:
+                    result["gas_total"] = _last_data.get("gas_total", 0)
+        elif isinstance(charge_precheck, AuthError):
+            if not _reauth_triggered:
+                _LOGGER.warning("refreshToken 失效，触发重新认证: %s", charge_precheck)
+                entry.async_start_reauth(hass)
+                _reauth_triggered = True
+            return _last_data
+        elif isinstance(charge_precheck, Exception):
+            _LOGGER.warning("gasConsumptionDataQuery 请求失败: %s", charge_precheck)
+
 
         # 持久化 token（刷新后的新 token 写回 config entry）
         _persist_tokens(hass, entry, api)

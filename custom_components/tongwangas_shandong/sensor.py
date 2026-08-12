@@ -42,6 +42,15 @@ _LOGGER = logging.getLogger(__name__)
 # 每种传感器的配置：key、data_key、名称、图标、设备类、单位、状态类、固定状态值
 _SENSOR_CONFIGS: list[dict[str, Any]] = [
     {
+        "key": "gas_total",
+        "data_key": "gas_total",
+        "name": "累计用气量",
+        "icon": "mdi:cash-multiple",
+        "device_class": SensorDeviceClass.GAS,
+        "unit": UnitOfVolume.CUBIC_METERS,
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+    },
+    {
         "key": "fee_payable",
         "data_key": "feePayable",
         "name": "应缴费用",
@@ -69,8 +78,8 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
         "state_class": None,
     },
     {
-        "key": "buy_amount",
-        "data_key": "buyamount",
+        "key": "gas_total_yearly",
+        "data_key": "gas_total_yearly",
         "name": "今年累计用气量",
         "icon": "mdi:cash-multiple",
         "device_class": SensorDeviceClass.GAS,
@@ -80,14 +89,13 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
         "reset_cycle": "year"
     },
     {
-        "key": "step_list",
-        "data_key": "stepList",
-        "name": "阶梯气价",
+        "key": "step_name",
+        "data_key": "step_name",
+        "name": "当前阶梯气价",
         "icon": "mdi:format-list-numbered",
         "device_class": None,
         "unit": None,
         "state_class": None,
-        "fixed_state": "正常",  # 状态固定为"正常"
     },
     {
         "key": "gas_consumption_trend_info",
@@ -250,7 +258,8 @@ class TongwangasShandongSensor(CoordinatorEntity, SensorEntity):
         data: dict[str, Any] = self.coordinator.data or {}
         data_key = self._config.get("data_key", self._sensor_key)
 
-        if self._sensor_key in ("step_list", "gas_consumption_trend_info", "gas_consumption_info"):
+        if self._sensor_key in ("gas_consumption_trend_info", "gas_consumption_info"):
             return {"graph": data.get(data_key, [])}
-
+        if self._sensor_key in ("step_name"):
+            return {"graph": data.get("step_list", [])}
         return {}

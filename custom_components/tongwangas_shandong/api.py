@@ -324,3 +324,10 @@ class TongwangasShandongApi:
             "/charge/gasStepFee",
             {"orgId": org_id, "subsId": subs_id},
         )
+
+    async def charge_precheck(self, org_id: str, subs_id: str,) -> dict[str, Any]:
+        """缴费预检查，输出结果的datas.readingRptList[].currReading为当前表读数。"""
+        return await self._cbs_get(
+            "/charge/preCheck",
+            {"orgId": org_id, "subsId": subs_id},
+        )
