@@ -57,6 +57,47 @@
 | 刷新数据 | 立即调用接口刷新数据 |
 | 刷新 Token | 立即刷新 token 并刷新数据 |
 
+## 用气卡片（Lovelace，可选）
+
+集成附带一张零依赖的 Lovelace 卡片，展示可用余额 / 应缴费用 / 累计用气量、
+用气卡片（本月用气 + 每日曲线）、用气阶梯、用气日历、年对比用气曲线、用气明细与日用气曲线。
+
+集成**不会**自动部署前端文件，需要手动复制一次。
+
+**1. 复制卡片文件**
+
+把 `custom_components/tongwangas_shandong/www/tongwangas-shandong-card.js`
+复制到 HA 配置目录（`config` 即与 `configuration.yaml` 同级的目录，`www` 不存在则新建）：
+
+```
+config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
+```
+
+**2. 添加为 Lovelace 资源**
+
+**设置** → **仪表盘** → 右上角 **⋮**（三个点）→ **资源** → **+ 添加资源**
+
+- **URL**：`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`
+- **资源类型**：**JavaScript 模块**
+
+保存后强制刷新浏览器（Windows/Linux `Ctrl + Shift + R`，macOS `Cmd + Shift + R`）。
+
+**3. 添加卡片**
+
+仪表盘 → 右下角 **编辑** → **+ 添加卡片** → **手动**，填入：
+
+```yaml
+type: custom:tongwangas-shandong-card
+gs: "1111111111"    # 户号；留空则自动探测
+title: 港华燃气
+```
+
+> 提示：若提示 `Custom element doesn't exist: tongwangas-shandong-card`，
+> 说明资源没添加成功或路径写错，请核对 URL 并强制刷新缓存。
+
+功能明细、实体依赖与常见问题见
+[卡片使用说明](custom_components/tongwangas_shandong/www/tongwangas-shandong-card.md)。
+
 ## 信息获取方式
 
 配置信息需要小程序抓包，建议用电脑端微信小程序进行抓包，手机抓包需要 root 或其他复杂方式。

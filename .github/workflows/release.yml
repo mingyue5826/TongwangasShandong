@@ -49,6 +49,31 @@ jobs:
             **HACS(推荐)**：点上面的按钮一键添加，或者手动操作：在 HACS 中添加本仓库为自定义集成，搜索`山东港华燃气`安装。
 
             **手动安装**：下载 `tongwangas_shandong.zip`，解压后将 `tongwangas_shandong/` 目录放入 HA 的 `config/custom_components/`，重启 HA 即可。
+
+            ### 用气卡片（Lovelace，可选）
+
+            集成附带零依赖 Lovelace 卡片（可用余额/应缴费用/累计用气量、用气阶梯、用气日历、年对比用气曲线、用气明细、日用气曲线）。集成不会自动部署前端文件，需手动复制一次：
+
+            1. 把 `custom_components/tongwangas_shandong/www/tongwangas-shandong-card.js` 复制到 HA 配置目录：
+
+               ```
+               config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
+               ```
+
+            2. 添加为资源：**设置** → **仪表盘** → 右上角 **⋮** → **资源** → **+ 添加资源**
+               - URL：`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`
+               - 资源类型：**JavaScript 模块**
+
+               保存后强制刷新浏览器（`Ctrl/Cmd + Shift + R`）。
+
+            3. 添加卡片：仪表盘 → 编辑 → **+ 添加卡片** → **手动**
+
+               ```yaml
+               type: custom:tongwangas-shandong-card
+               gs: "户号" # 户号；留空则自动探测
+               title: 港华燃气
+               ```
+
           files: tongwangas_shandong.zip
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

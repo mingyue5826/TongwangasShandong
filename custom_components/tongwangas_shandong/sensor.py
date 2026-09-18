@@ -117,6 +117,18 @@ _SENSOR_CONFIGS: list[dict[str, Any]] = [
         "state_class": None,
         "fixed_state": "图表",  # 状态固定为"图表"
     },
+    {
+        "key": "gas_total_daily",
+        "data_key": "gas_total_daily",
+        "name": "每日用气量",
+        "icon": "mdi:chart-line-variant",
+        "device_class": SensorDeviceClass.GAS,
+        "unit": UnitOfVolume.CUBIC_METERS,
+        # device_class=GAS 要求 state_class 为 None / total / total_increasing。
+        # 本实体为“每日用气量”（非累计），不设 state_class，避免 HA 校验告警，
+        # 也不让 HA 为本实体生成统计量（数据来自 gas_total 的统计量）。
+        "state_class": None,
+    },
 ]
 
 
@@ -262,4 +274,6 @@ class TongwangasShandongSensor(CoordinatorEntity, SensorEntity):
             return {"graph": data.get(data_key, [])}
         if self._sensor_key in ("step_name"):
             return {"graph": data.get("step_list", [])}
+        if self._sensor_key in ("gas_total_daily"):
+            return {"graph": data.get("gas_total_daily_graph", [])}
         return {}
