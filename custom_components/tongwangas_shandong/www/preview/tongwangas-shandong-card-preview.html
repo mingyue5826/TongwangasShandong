@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="0zC2W53FTbWVwXaT3kXzPb">
+<head data-page-node-id="jFArsToAvj3G3mWkbplZyI">
+<meta charset="utf-8" data-page-node-id="PNArKTXjNJ1O1tScs13DFV" />
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="eOeH8WOroYHm0BEWVHWBM0" />
+<title>港华燃气用气卡片 · 本地预览</title>
+<style>
+  :root {
+    --primary-text-color: #1c1c1e;
+    --secondary-text-color: #8a8a8e;
+    --secondary-background-color: rgba(0, 0, 0, 0.04);
+    --ha-card-background: #fff;
+    --ha-card-border-radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f0f2f5;
+    color: var(--primary-text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding: 24px 12px 56px;
+  }
+  .preview-wrap { max-width: 480px; margin: 0 auto; }
+  .preview-title {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 4px 0 4px;
+    color: #333;
+  }
+  .preview-sub {
+    text-align: center;
+    font-size: 11.5px;
+    color: #8a8a8e;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .panel-label {
+    font-size: 12px;
+    color: #888;
+    margin: 20px 4px 6px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .frame {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body data-page-node-id="6CV46TW42nkrQKTGpPQHPO">
+<div class="preview-wrap" data-page-node-id="fVZqzNKWq2C0fofv2uUCeZ">
+  <div class="preview-title" data-page-node-id="Kk7x9XVJbVabLotAkDZ75F">港华燃气用气卡片 · 本地预览</div>
+  <div class="preview-sub" data-page-node-id="ReFHwqvCXJEnOIUYUAoQzS">
+    以下为 mock 数据渲染（非真实户号）。可直接双击打开本文件查看；在 HA 中需把上级
+    <code data-page-node-id="bN1tpxbo9EaNqtDjhyNWd5">www/</code> 目录注册为 Lovelace 资源后使用。
+  </div>
+  <div id="mount" data-page-node-id="SBFVebGs3HdiQJH1LqCg6N"></div>
+</div>
+
+<!-- HA 自带的 ha-card 占位：独立预览时补齐 display:block 与卡片背景/圆角 -->
+<script>
+  if (!customElements.get("ha-card")) {
+    customElements.define(
+      "ha-card",
+      class extends HTMLElement {
+        connectedCallback() {
+          this.style.display = "block";
+        }
+      }
+    );
+  }
+</script>
+
+<!-- 引用真实卡片代码（与集成同步） -->
+<script src="../tongwangas-shandong-card.js"></script>
+
+<script>
+/* ===========================================================================
+ * Mock 数据生成：模拟集成向 HA 注册的 9 个实体
+ * 实体 id 约定：sensor.tongwangas_shandong_<后缀>_<户号>
+ * ======================================================================== */
+const GS = "1111111111";
+const PREFIX = "sensor.tongwangas_shandong";
+
+// 季节性权重（冬季用气多，模拟采暖）
+const SEASONAL = { 1: 1.8, 2: 1.9, 3: 1.4, 4: 1.0, 5: 0.8, 6: 0.7, 7: 0.7, 8: 0.75, 9: 0.9, 10: 1.2, 11: 1.5, 12: 1.7 };
+
+// 用气明细：近 13 个月（2025-08 ~ 2026-08），每月一条抄表记录
+function genMonthly() {
+  const out = [];
+  let y = 2025, m = 8;
+  let lastReading = 120.0;
+  for (let i = 0; i < 13; i++) {
+    const mm = String(m).padStart(2, "0");
+    const ym = `${y}${mm}`;
+    const w = SEASONAL[m];
+    const gas = +((w * 18 + Math.random() * 6)).toFixed(2);
+    const money = +(gas * 3.5).toFixed(2);
+    const currReading = +(lastReading + gas).toFixed(2);
+    out.push({
+      yrMonth: ym,
+      gasSum: gas,
+      money,
+      readingDate: `${y}-${mm}-24`,
+      lastReading: +lastReading.toFixed(2),
+      currReading,
+      lastYearFlag: null,
+    });
+    lastReading = currReading;
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
+// 用气趋势：去年(2025) 全年 + 今年(2026) 1~12 月（未来月份为 0）
+function genTrend() {
+  const out = [];
+  for (let m = 1; m <= 12; m++) {
+    const gas = +((SEASONAL[m] * 16 + Math.random() * 5)).toFixed(2);
+    out.push({ yrMonth: `2025${String(m).padStart(2, "0")}`, gasSum: gas, lastYearFlag: "Y" });
+  }
+  for (let m = 1; m <= 12; m++) {
+    const gas = m <= 8 ? +((SEASONAL[m] * 17 + Math.random() * 5)).toFixed(2) : 0;
+    out.push({ yrMonth: `2026${String(m).padStart(2, "0")}`, gasSum: gas, lastYearFlag: "N" });
+  }
+  return out;
+}
+
+// 每日用气量：最近 150 天（来自累计用气量的统计量表），含季节性波动
+function genDaily() {
+  const out = [];
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - 150);
+  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const mo = d.getMonth() + 1;
+    const w = SEASONAL[mo];
+    const g = +((w * 0.9 + Math.random() * 0.5)).toFixed(2);
+    const iso = d.toISOString().slice(0, 10);
+    out.push({ date: iso, gasSum: g });
+  }
+  return out;
+}
+
+const monthly = genMonthly();
+const trend = genTrend();
+const daily = genDaily();
+
+// 用气阶梯：三档单价（数据来自 step_name 实体的 graph）
+const stepGraph = [
+  { stepName: "一阶气价", modelSeq: 1, maxMount: 216, price: 3.5 },
+  { stepName: "二阶气价", modelSeq: 2, maxMount: 360, price: 4.1 },
+  { stepName: "三阶气价", modelSeq: 3, maxMount: null, price: 5.0 },
+];
+
+const states = {
+  [`${PREFIX}_available_balance_${GS}`]: { state: "256.30", attributes: {} },
+  [`${PREFIX}_fee_payable_${GS}`]: { state: "86.40", attributes: {} },
+  [`${PREFIX}_gas_total_${GS}`]: { state: "257.30", attributes: {} },
+  [`${PREFIX}_gas_total_yearly_${GS}`]: { state: "160.50", attributes: {} },
+  [`${PREFIX}_last_meter_reading_date_${GS}`]: { state: "2026-08-24", attributes: {} },
+  [`${PREFIX}_step_name_${GS}`]: { state: "一阶气价", attributes: { graph: stepGraph } },
+  [`${PREFIX}_gas_consumption_info_${GS}`]: { state: "图表", attributes: { graph: monthly } },
+  [`${PREFIX}_gas_consumption_trend_info_${GS}`]: { state: "图表", attributes: { graph: trend } },
+  [`${PREFIX}_gas_total_daily_${GS}`]: { state: "1.20", attributes: { graph: daily } },
+};
+
+const hass = { states, themes: {}, config: {} };
+
+/* ===========================================================================
+ * 渲染：把卡片的五个面板分别渲染出来（用 default_panel 控制默认展开项）
+ * ======================================================================== */
+const mount = document.getElementById("mount");
+const panels = [
+  { label: "主视图（费用 / 用气 / 阶梯）", cfg: { gs: GS, title: "港华燃气", default_panel: "" } },
+  { label: "用气日历（每日用量 + 月统计）", cfg: { gs: GS, title: "港华燃气", default_panel: "calendar" } },
+  { label: "用气曲线（今年 vs 去年 · 双折线+双柱状）", cfg: { gs: GS, title: "港华燃气", default_panel: "yearCurve" } },
+  { label: "用气明细（每月一行）", cfg: { gs: GS, title: "港华燃气", default_panel: "table" } },
+  { label: "日用气曲线（来自统计量表）", cfg: { gs: GS, title: "港华燃气", default_panel: "daily" } },
+];
+
+for (const p of panels) {
+  const lab = document.createElement("div");
+  lab.className = "panel-label";
+  lab.textContent = p.label;
+  mount.appendChild(lab);
+
+  const frame = document.createElement("div");
+  frame.className = "frame";
+  mount.appendChild(frame);
+
+  const el = document.createElement("tongwangas-shandong-card");
+  el.setConfig(p.cfg);
+  el.hass = hass;
+  frame.appendChild(el);
+}
+</script>
+</body>
+</html>
