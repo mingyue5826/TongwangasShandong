@@ -57,10 +57,10 @@ const ENTITY_SUFFIX = {
   gas_total_daily: "gas_total_daily",
 };
 
-// 配色（用气=橙，费用=紫，去年=蓝灰）
-const COLOR_GAS = "#e8772e";
+// 配色（与「济南水务」水费卡片统一：用气=蓝，费用=紫，去年=浅紫）
+const COLOR_GAS = "#2f9be0";
 const COLOR_COST = "#9575cd";
-const COLOR_LASTYEAR = "#7aa7c7";
+const COLOR_LASTYEAR = "#8f83db";
 const COLOR_AVG = "#9e9e9e";
 const COLOR_WARN = "#f59e0b";
 const COLOR_OK = "#22c55e";
@@ -1311,8 +1311,8 @@ const STYLES = `
   .usage-cost { font-size: 14px; font-weight: 600; margin-top: 2px; color: ${COLOR_COST}; }
   .usage-sub { font-size: 10.5px; font-weight: 500; color: var(--secondary-text-color, #8a8a8e); margin-left: 4px; }
   .usage-delta { font-size: 11.5px; font-weight: 700; margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; }
-  .usage-delta.up { color: #d9534f; }
-  .usage-delta.down { color: #2e9e5b; }
+  .usage-delta.up { color: #e05a5a; }
+  .usage-delta.down { color: #22c55e; }
   .usage-delta.muted { color: var(--secondary-text-color, #8a8a8e); font-weight: 500; }
   .section-sub { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--secondary-text-color, #8a8a8e); }
   .usage-spark { flex: 1 1 60%; cursor: pointer; position: relative; }
@@ -1325,28 +1325,28 @@ const STYLES = `
   .ladder-tier { position: relative; height: 32px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   .ladder-tier:first-child { border-top-left-radius: 7px; border-bottom-left-radius: 7px; }
   .ladder-tier:last-child { border-top-right-radius: 7px; border-bottom-right-radius: 7px; }
-  .ladder-tier.t1 { background: #fbe6d6; }
-  .ladder-tier.t2 { background: #f6d9c4; }
-  .ladder-tier.t3 { background: #f1cdb4; }
+  .ladder-tier.t1 { background: #dcecf8; }
+  .ladder-tier.t2 { background: #e7e3f8; }
+  .ladder-tier.t3 { background: #f7e6f2; }
   .ladder-tier-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; transition: width .35s ease; }
-  .ladder-tier.t1 .ladder-tier-fill { background: #e8772e; }
-  .ladder-tier.t2 .ladder-tier-fill { background: #d85f1c; }
-  .ladder-tier.t3 .ladder-tier-fill { background: #b94a12; }
+  .ladder-tier.t1 .ladder-tier-fill { background: #5aa9e0; }
+  .ladder-tier.t2 .ladder-tier-fill { background: #8f83db; }
+  .ladder-tier.t3 .ladder-tier-fill { background: #c57fc6; }
   .ladder-tier.active { outline: 2px solid ${COLOR_GAS}; outline-offset: -2px; }
-  .ladder-tier-name { position: relative; z-index: 1; font-size: 11.5px; font-weight: 700; color: #5a2c0c; }
-  .ladder-bolt { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; color: #7a3308; display: flex; pointer-events: none; filter: drop-shadow(0 0 2px rgba(255,255,255,.95)); transition: left .35s ease; }
+  .ladder-tier-name { position: relative; z-index: 1; font-size: 11.5px; font-weight: 700; color: #26445c; }
+  .ladder-bolt { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; color: #123c5c; display: flex; pointer-events: none; filter: drop-shadow(0 0 2px rgba(255,255,255,.95)); transition: left .35s ease; }
   .ladder-ranges { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 4px; }
   .ladder-range { text-align: center; font-size: 10.5px; padding: 4px 0; font-weight: 600; }
-  .ladder-range.t1 { background: #fdeede; color: #b5531a; border-radius: 6px 0 0 6px; }
-  .ladder-range.t2 { background: #fbe2d2; color: #a9480f; }
-  .ladder-range.t3 { background: #f6d3bd; color: #93390a; border-radius: 0 6px 6px 0; }
+  .ladder-range.t1 { background: #eaf5fd; color: #1b6fa8; border-radius: 6px 0 0 6px; }
+  .ladder-range.t2 { background: #efeefb; color: #4b3f9e; }
+  .ladder-range.t3 { background: #fbeef8; color: #8a3b83; border-radius: 0 6px 6px 0; }
   .lr-range { font-weight: 700; }
   .lr-price { font-weight: 500; opacity: .85; }
 
   .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
   .action { display: flex; align-items: center; justify-content: center; gap: 4px; height: 38px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; background: var(--secondary-background-color, rgba(0,0,0,0.04)); border: 1px solid transparent; transition: all .18s ease; user-select: none; }
   .action:hover { border-color: ${COLOR_GAS}; }
-  .action.active { background: #fbe6d6; border-color: ${COLOR_GAS}; color: #b5531a; font-weight: 700; }
+  .action.active { background: #d7ecfb; border-color: ${COLOR_GAS}; color: #1b6fa8; font-weight: 700; }
 
   .panel-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
   .panel-sub { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--secondary-text-color, #8a8a8e); }
@@ -1361,8 +1361,8 @@ const STYLES = `
   .cal-week span { text-align: center; font-size: 11px; color: var(--secondary-text-color, #8a8a8e); }
   .cal-cell { min-height: 52px; border-radius: 7px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: transparent; }
   .cal-cell.empty { background: transparent; }
-  .cal-cell.has-data { background: #fbeede; }
-  .cal-cell.has-data.lv2 { background: #f6c79a; }
+  .cal-cell.has-data { background: #eaf5fd; }
+  .cal-cell.has-data.lv2 { background: #bfdffa; }
   .cal-cell.has-data.lv3 { background: ${COLOR_GAS}; }
   .cal-cell.has-data.lv3 .cal-day,
   .cal-cell.has-data.lv3 .cal-usage,
@@ -1376,8 +1376,8 @@ const STYLES = `
   .cal-note { opacity: .8; }
   .cal-legend { width: 100%; display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--secondary-text-color, #8a8a8e); }
   .cal-legend .lg { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-left: 8px; }
-  .cal-legend .lg.lv1 { background: #fbeede; border: 1px solid #f0d8c0; }
-  .cal-legend .lg.lv2 { background: #f6c79a; }
+  .cal-legend .lg.lv1 { background: #eaf5fd; border: 1px solid #cfe6fa; }
+  .cal-legend .lg.lv2 { background: #bfdffa; }
   .cal-legend .lg.lv3 { background: ${COLOR_GAS}; }
 
   .chart-wrap { position: relative; }
@@ -1393,8 +1393,8 @@ const STYLES = `
 
   .daily-range { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
   .range-btn { font-size: 11.5px; padding: 3px 11px; border-radius: 14px; cursor: pointer; user-select: none; background: var(--secondary-background-color, rgba(0,0,0,0.04)); color: var(--secondary-text-color, #6b7280); border: 1px solid transparent; transition: all .15s ease; }
-  .range-btn:hover { border-color: ${COLOR_GAS}; color: #b5531a; }
-  .range-btn.active { background: #fbe6d6; border-color: ${COLOR_GAS}; color: #b5531a; font-weight: 700; }
+  .range-btn:hover { border-color: ${COLOR_GAS}; color: #1b6fa8; }
+  .range-btn.active { background: #d7ecfb; border-color: ${COLOR_GAS}; color: #1b6fa8; font-weight: 700; }
   .range-date { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
   .range-date input[type="date"] { font-size: 11.5px; padding: 2px 4px; border: 1px solid var(--tws-border); border-radius: 6px; background: var(--ha-card-background, #fff); color: var(--primary-text-color, #1c1c1e); }
   .range-sep { font-size: 11px; color: var(--secondary-text-color, #8a8a8e); }
@@ -1435,8 +1435,8 @@ if (!window.customCards.some((card) => card.type === "tongwangas-shandong-card")
 
 console.info(
   `%c港华燃气%c tongwangas-shandong-card %cv${CARD_VERSION} %c已就绪`,
-  "background:#e8772e;color:#fff;padding:4px 10px;border-radius:6px;font-weight:600;",
-  "background:rgba(232,119,46,.15);color:#b5531a;padding:4px 8px;border-radius:6px;margin-left:6px;",
-  "background:rgba(232,119,46,.15);color:#b5531a;padding:4px 8px;border-radius:6px;margin-left:6px;",
+  "background:#2f9be0;color:#fff;padding:4px 10px;border-radius:6px;font-weight:600;",
+  "background:rgba(47,155,224,.15);color:#1b6fa8;padding:4px 8px;border-radius:6px;margin-left:6px;",
+  "background:rgba(47,155,224,.15);color:#1b6fa8;padding:4px 8px;border-radius:6px;margin-left:6px;",
   "color:#4caf50;margin-left:6px;",
 );
