@@ -1,6 +1,29 @@
 """山东港华燃气集成的常量定义。"""
 
+import json
+from pathlib import Path
+
 DOMAIN = "tongwangas_shandong"
+
+# ---- 前端卡片（Lovelace）----
+# 集成自带卡片 JS，通过静态路径对外暴露，并在启动时自动登记为 Lovelace 资源，
+# 用户无需手动复制文件或手动添加资源。详见 frontend.py。
+FRONTEND_URL_BASE = "/tongwangas_shandong"          # 静态资源 URL 前缀
+CARD_FILENAME = "tongwangas-shandong-card.js"       # 卡片 JS 文件名
+CARD_URL = f"{FRONTEND_URL_BASE}/{CARD_FILENAME}"   # 卡片 JS 访问地址
+
+
+def _read_integration_version() -> str:
+    """从 manifest.json 读取集成版本号（用于卡片 URL 的缓存穿透参数）。"""
+    try:
+        with open(Path(__file__).parent / "manifest.json", encoding="utf-8") as file:
+            return json.load(file).get("version") or "0.0.0"
+    except Exception:  # noqa: BLE001 - 版本号读取失败不应影响集成加载
+        return "0.0.0"
+
+
+# 卡片资源 URL 会拼上 ?v=<该版本号>：升级集成后版本变化，浏览器不会继续用旧卡片缓存
+INTEGRATION_VERSION = _read_integration_version()
 
 # ---- Config Flow 配置项键名 ----
 CONF_ORG_ID = "org_id"                     # 燃气公司ID

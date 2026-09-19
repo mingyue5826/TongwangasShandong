@@ -57,34 +57,34 @@
 | 刷新数据 | 立即调用接口刷新数据 |
 | 刷新 Token | 立即刷新 token 并刷新数据 |
 
-## 用气卡片（Lovelace，可选）
+## 用气卡片（Lovelace）
 
 集成附带一张零依赖的 Lovelace 卡片，展示可用余额 / 应缴费用 / 累计用气量、
 用气卡片（本月用气 + 每日曲线）、用气阶梯、用气日历、年对比用气曲线、用气明细与日用气曲线。
 
-集成**不会**自动部署前端文件，需要手动复制一次。
+**卡片随集成自动就绪：不需要手动复制文件，也不需要手动在仪表盘里添加 JS 资源。**
 
-**1. 复制卡片文件**
+### 自动注册是怎么做的
 
-把 `custom_components/tongwangas_shandong/www/tongwangas-shandong-card.js`
-复制到 HA 配置目录（`config` 即与 `configuration.yaml` 同级的目录，`www` 不存在则新建）：
+集成加载时会做两件事：
 
-```
-config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
-```
+1. 把集成自带的 `www/` 目录挂载为静态路径 `/tongwangas_shandong/`；
+2. 把 `/tongwangas_shandong/tongwangas-shandong-card.js?v=<集成版本>` 登记为 Lovelace 资源。
 
-**2. 添加为 Lovelace 资源**
+登记方式按你的仪表盘资源模式自动分流：
 
-**设置** → **仪表盘** → 右上角 **⋮**（三个点）→ **资源** → **+ 添加资源**
+| 资源模式 | 集成行为 | 效果 |
+| --- | --- | --- |
+| **storage**（默认） | 写入仪表盘资源表 | 可在 **设置** → **仪表盘** → 右上角 **⋮** → **资源** 中看到，按需加载，Cast 设备（Chromecast / Nest Hub）也能显示卡片 |
+| **yaml** | 退回全局注入 | 与 `frontend.extra_module_url` 同款机制；所有面板都会加载该 JS，Cast 设备不加载 |
 
-- **URL**：`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`
-- **资源类型**：**JavaScript 模块**
+> 资源 URL 上的 `?v=` 是缓存穿透参数，HACS 升级集成后版本号变化，浏览器会自动拉取新卡片。
+> 该资源由集成自动维护，请在「资源」列表中**不要手动删除**。
 
-保存后强制刷新浏览器（Windows/Linux `Ctrl + Shift + R`，macOS `Cmd + Shift + R`）。
+### 添加卡片
 
-**3. 添加卡片**
-
-仪表盘 → 右下角 **编辑** → **+ 添加卡片** → **手动**，填入：
+仪表盘 → 右下角 **编辑** → **+ 添加卡片** → 搜索 **港华燃气用气卡片** 直接添加，
+或在「手动」中填入：
 
 ```yaml
 type: custom:tongwangas-shandong-card
@@ -92,11 +92,34 @@ gs: "1111111111"    # 户号；留空则自动探测
 title: 港华燃气
 ```
 
-> 提示：若提示 `Custom element doesn't exist: tongwangas-shandong-card`，
-> 说明资源没添加成功或路径写错，请核对 URL 并强制刷新缓存。
+> 升级集成后若卡片外观没变化，强制刷新浏览器（Windows/Linux `Ctrl + Shift + R`，
+> macOS `Cmd + Shift + R`）。
+
+### 曾经手动添加过资源？
+
+早期版本需要手动把 JS 复制到 `config/www/community/tongwangas-shandong/` 并手动添加资源。
+如果照做过一次，请到 **设置** → **仪表盘** → **⋮** → **资源** 里**删除**那条
+`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`。
+不删也能用（卡片自身做了重复注册保护），但同一份 JS 会被加载两次。
+
+### 卡片不显示？
+
+1. 打开 **设置** → **仪表盘** → **⋮** → **资源**，确认存在
+   `/tongwangas_shandong/tongwangas-shandong-card.js?v=...`；不存在则**重启 Home Assistant**。
+2. 重启后仍不显示，开启 debug 日志查看注册失败原因：
+
+   ```yaml
+   logger:
+     logs:
+       custom_components.tongwangas_shandong: debug
+   ```
+
+   日志中会输出 `已自动登记 Lovelace 卡片资源` 或具体的失败原因。
+3. 确认浏览器已强制刷新（`Ctrl/Cmd + Shift + R`）。
 
 功能明细、实体依赖与常见问题见
-[卡片使用说明](custom_components/tongwangas_shandong/www/tongwangas-shandong-card.md)。
+[卡片使用说明](custom_components/tongwangas_shandong/tongwangas-shandong-card.md)。
+
 
 ## 信息获取方式
 
@@ -140,3 +163,28 @@ logger:
   logs:
     custom_components.tongwangas_shandong: debug
 ```
+
+## 仓库结构（开发参考）
+
+```
+custom_components/tongwangas_shandong/   # 集成本体 —— HACS 只会安装这个目录
+├── manifest.json
+├── frontend.py                          # 卡片自动注册（静态路径 + Lovelace 资源）
+├── tongwangas-shandong-card.md          # 卡片使用说明
+└── www/                                 # 卡片 JS，挂载为 /tongwangas_shandong/ 对外提供
+    └── tongwangas-shandong-card.js
+preview/                                 # 开发用预览页与截图，仅存于仓库，不随集成安装
+hacs.json                                # HACS 仓库元信息
+```
+
+两条关键约定：
+
+- **卡片 JS 必须放在 `custom_components/tongwangas_shandong/www/`，不能放仓库根目录。**
+  HACS 安装「集成」类仓库时只复制 `custom_components/<domain>/` 这棵子树
+  （源码见 HACS `HacsIntegrationRepository.localpath` / `content.path.remote`），
+  仓库根目录的文件不会进入用户的 HA 配置目录，静态路径自然取不到文件。
+  （根目录放 `www/` 是「插件 / 仪表盘」类仓库的约定 —— 那类仓库才由 HACS 把文件复制到
+  `config/www/community/<仓库名>/`。）
+- **`www/` 是公开目录**：其中每个文件都能通过 `/tongwangas_shandong/<文件名>` 直接访问，
+  所以预览页、截图、开发脚本、说明文档一律放在集成外 —— 本仓库放根目录 `preview/`
+  与集成根目录的 `tongwangas-shandong-card.md`。

@@ -55,8 +55,10 @@
 <div class="preview-wrap" data-page-node-id="fVZqzNKWq2C0fofv2uUCeZ">
   <div class="preview-title" data-page-node-id="Kk7x9XVJbVabLotAkDZ75F">港华燃气用气卡片 · 本地预览</div>
   <div class="preview-sub" data-page-node-id="ReFHwqvCXJEnOIUYUAoQzS">
-    以下为 mock 数据渲染（非真实户号）。可直接双击打开本文件查看；在 HA 中需把上级
-    <code data-page-node-id="bN1tpxbo9EaNqtDjhyNWd5">www/</code> 目录注册为 Lovelace 资源后使用。
+    以下为 mock 数据渲染（非真实户号）。可直接双击打开本文件查看。
+    本页为开发用预览，随仓库根目录
+    <code data-page-node-id="bN1tpxbo9EaNqtDjhyNWd5">preview/</code> 共存，不会随集成安装到 HA；
+    卡片本体在 HA 中由集成自动注册，无需手动添加资源。
   </div>
   <div id="mount" data-page-node-id="SBFVebGs3HdiQJH1LqCg6N"></div>
 </div>
@@ -75,8 +77,8 @@
   }
 </script>
 
-<!-- 引用真实卡片代码（与集成同步） -->
-<script src="../tongwangas-shandong-card.js"></script>
+<!-- 引用集成内的真实卡片代码（相对路径，保持与 release 版本同步） -->
+<script src="../custom_components/tongwangas_shandong/www/tongwangas-shandong-card.js"></script>
 
 <script>
 /* ===========================================================================

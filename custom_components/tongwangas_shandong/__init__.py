@@ -26,6 +26,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api import AuthError, TongwangasShandongApi
 from .config_flow import _async_load_token_file, _async_save_token_file
+from .frontend import async_register_frontend
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_HOST,
@@ -46,6 +47,19 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
 
 type TongwangasShandongConfigEntry = ConfigEntry
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """组件级初始化：注册前端静态路径并自动登记配套卡片资源。
+
+    放在 async_setup（而非 async_setup_entry）是因为静态路径只能注册一次，
+    而配置条目可以有多个；同时这个钩子只在集成被实际加载时触发，所以不会
+    给「装了但没配置」的用户平白加载前端资源。
+
+    卡片资源注册失败不会中断集成，仅记录日志。
+    """
+    await async_register_frontend(hass)
+    return True
 
 
 async def async_setup_entry(

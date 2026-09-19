@@ -29,7 +29,8 @@ jobs:
       - name: Package integration
         run: |
           cd custom_components
-          zip -r ../tongwangas_shandong.zip tongwangas_shandong/
+          zip -r ../tongwangas_shandong.zip tongwangas_shandong/ \
+            -x "*/__pycache__/*" -x "*.pyc" -x "*/.DS_Store"
           cd ..
           echo "SHA256: $(sha256sum tongwangas_shandong.zip)"
 
@@ -50,29 +51,22 @@ jobs:
 
             **手动安装**：下载 `tongwangas_shandong.zip`，解压后将 `tongwangas_shandong/` 目录放入 HA 的 `config/custom_components/`，重启 HA 即可。
 
-            ### 用气卡片（Lovelace，可选）
+            ### 用气卡片（Lovelace）
 
-            集成附带零依赖 Lovelace 卡片（可用余额/应缴费用/累计用气量、用气阶梯、用气日历、年对比用气曲线、用气明细、日用气曲线）。集成不会自动部署前端文件，需手动复制一次：
+            集成附带零依赖 Lovelace 卡片（可用余额/应缴费用/累计用气量、用气阶梯、用气日历、年对比用气曲线、用气明细、日用气曲线）。
 
-            1. 把 `custom_components/tongwangas_shandong/www/tongwangas-shandong-card.js` 复制到 HA 配置目录：
+            **卡片随集成自动就绪：无需手动复制文件，也无需手动在仪表盘里添加 JS 资源。** 集成启动时会自动把卡片目录挂载为静态路径 `/tongwangas_shandong/`，并把卡片登记为 Lovelace 资源（storage 资源模式写入资源表；yaml 模式退回全局注入）。
 
-               ```
-               config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
-               ```
+            添加卡片：仪表盘 → 编辑 → **+ 添加卡片** → 搜索「港华燃气用气卡片」，或选 **手动** 填入：
 
-            2. 添加为资源：**设置** → **仪表盘** → 右上角 **⋮** → **资源** → **+ 添加资源**
-               - URL：`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`
-               - 资源类型：**JavaScript 模块**
+            ```yaml
+            type: custom:tongwangas-shandong-card
+            gs: "户号" # 户号；留空则自动探测
+            title: 港华燃气
+            ```
 
-               保存后强制刷新浏览器（`Ctrl/Cmd + Shift + R`）。
-
-            3. 添加卡片：仪表盘 → 编辑 → **+ 添加卡片** → **手动**
-
-               ```yaml
-               type: custom:tongwangas-shandong-card
-               gs: "户号" # 户号；留空则自动探测
-               title: 港华燃气
-               ```
+            > 若你曾按旧版说明手动添加过 `/local/community/tongwangas-shandong/...` 资源，
+            > 请到 **设置** → **仪表盘** → **⋮** → **资源** 中删除它，避免同一份 JS 被加载两次。
 
           files: tongwangas_shandong.zip
           draft: false

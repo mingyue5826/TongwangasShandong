@@ -9,33 +9,27 @@
 
 ## 添加到 Home Assistant
 
-集成**不会**自动部署前端文件，需要手动复制一次（只需做一次，之后升级卡片再覆盖该文件）。
+**卡片随集成自动就绪，无需手动复制文件，也无需手动在仪表盘里添加 JS 资源。**
 
-### 步骤 1：复制卡片文件
+集成加载时会自动完成两件事：
 
-把 `tongwangas-shandong-card.js` 复制到 HA 配置目录下的 `www`：
+1. 把集成自带的 `www/` 目录挂载为静态路径 `/tongwangas_shandong/`；
+2. 把 `/tongwangas_shandong/tongwangas-shandong-card.js?v=<集成版本>` 登记为 Lovelace 资源。
 
-```
-config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
-```
+### 登记方式（按你的资源模式自动分流）
 
-- `config` 即 HA 配置目录（与 `configuration.yaml` 同级）；
-- `www` 不存在则自行创建，子目录 `community/tongwangas-shandong/` 一并创建；
-- `config/www` 会被映射为前端 URL 的 `/local/`，所以该文件的访问地址是
-  `/local/community/tongwangas-shandong/tongwangas-shandong-card.js`。
+| 资源模式 | 集成行为 | 效果 |
+|---|---|---|
+| **storage**（默认） | 写入仪表盘资源表 | 在 **设置** → **仪表盘** → 右上角 **⋮** → **资源** 中可看到；按需加载；Cast 设备（Chromecast / Nest Hub）可显示卡片 |
+| **yaml** | 退回全局注入（`add_extra_js_url`） | 与 `frontend.extra_module_url` 同款机制；所有面板都会加载该 JS；Cast 设备不加载 |
 
-### 步骤 2：添加为 Lovelace 资源
+URL 上的 `?v=` 为缓存穿透参数，HACS 升级集成后版本号变化，浏览器会自动拉取新卡片。
+该资源由集成自动维护，请在「资源」列表中**不要手动删除**。
 
-1. 进入 **设置** → **仪表盘**；
-2. 点右上角 **⋮**（三个点）→ **资源**；
-3. 点 **+ 添加资源**；
-4. **URL** 填 `/local/community/tongwangas-shandong/tongwangas-shandong-card.js`；
-5. **资源类型** 选 **JavaScript 模块**；
-6. 保存后**强制刷新浏览器**（Windows/Linux `Ctrl + Shift + R`，macOS `Cmd + Shift + R`）。
+### 添加卡片
 
-### 步骤 3：添加卡片
-
-仪表盘 → 右下角 **编辑** → **+ 添加卡片** → 拉到列表最下选 **手动**，填入：
+仪表盘 → 右下角 **编辑** → **+ 添加卡片** → 搜索「港华燃气用气卡片」直接添加，
+或在「手动」中填入：
 
 ```yaml
 type: custom:tongwangas-shandong-card
@@ -43,16 +37,21 @@ gs: "1111111111"
 title: 港华燃气
 ```
 
-卡片已注册到卡片选择器，也可以在 **+ 添加卡片** 中直接搜索「港华燃气用气卡片」添加。
+### 曾经手动添加过资源？
+
+早期版本需要手动把 JS 复制到 `config/www/community/tongwangas-shandong/` 并手动添加资源。
+若照做过一次，请到 **设置** → **仪表盘** → **⋮** → **资源** 里**删除**那条
+`/local/community/tongwangas-shandong/tongwangas-shandong-card.js`。
+不删也能用（卡片自身做了重复注册保护），但同一份 JS 会被加载两次。
 
 ### 常见问题
 
 | 现象 | 原因 / 处理 |
 |---|---|
-| 提示 `Custom element doesn't exist: tongwangas-shandong-card` | 资源未添加或路径写错。核对 URL 是否为 `/local/community/tongwangas-shandong/tongwangas-shandong-card.js`，并强制刷新浏览器 |
+| 提示 `Custom element doesn't exist: tongwangas-shandong-card` | 资源未加载。到 **设置 → 仪表盘 → ⋮ → 资源** 确认存在 `/tongwangas_shandong/tongwangas-shandong-card.js?v=...`；不存在则重启集成/HA，并开启 debug 日志查看注册失败原因 |
 | 卡片显示「未找到港华燃气设备」 | 集成未添加或实体未加载；也可在卡片配置里显式填写 `gs`（户号） |
 | 曲线 / 日历为空 | `gas_total_daily` 尚无每日数据（来自 HA statistics，需集成运行一段时间），日历此时会自动回退用气明细的月度值 |
-| 升级卡片后界面没变化 | 浏览器缓存：强制刷新，或在资源 URL 后加版本参数（如 `...card.js?v=1.1.0`） |
+| 升级集成后界面没变化 | 浏览器缓存：强制刷新（`Ctrl/Cmd + Shift + R`）；或确认资源 URL 上的 `?v=` 已随版本变化 |
 
 > **命名说明**：卡片早期文件名为 `tongwangas-shandong-gas-card.js`、类型为
 > `custom:tongwangas-shandong-gas-card`，现已统一为 `tongwangas-shandong-card`。

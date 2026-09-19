@@ -6,13 +6,13 @@
  * 今年 vs 去年 双折线+双柱状）、用气明细表格、日用气曲线。
  *
  * 添加到 Home Assistant
- * 1. 把本文件复制到 HA 配置目录下的 www：
- *      config/www/community/tongwangas-shandong/tongwangas-shandong-card.js
- *    （www 目录若不存在则自行创建；集成不会自动部署该文件）
- * 2. 设置 → 仪表盘 → 右上角「⋮」→ 资源 → 添加资源
- *      URL：/local/community/tongwangas-shandong/tongwangas-shandong-card.js
- *      资源类型：JavaScript 模块
- * 3. 仪表盘 → 右下角「编辑」→ 添加卡片 → 手动（YAML）填入下方配置
+ * 卡片随集成自动就绪，无需手动复制文件、也无需手动在仪表盘里添加 JS 资源：
+ * 集成启动时会把本文件所在的 www/ 目录挂载为静态路径 /tongwangas_shandong/，
+ * 并把 /tongwangas_shandong/tongwangas-shandong-card.js?v=<集成版本> 自动登记为
+ * Lovelace 资源（storage 资源模式写入资源表；yaml 模式退回全局注入）。
+ * 实现见 custom_components/tongwangas_shandong/frontend.py。
+ * 之后只需：仪表盘 → 右下角「编辑」→ 添加卡片 → 搜索「港华燃气用气卡片」，
+ * 或在「手动」中填入下方配置。
  *
  * 设计要点（与济南水务卡片保持同一技术路线）
  * 1. 零依赖单文件：不内联任何图表库，曲线/柱状均用手绘 SVG（Catmull-Rom 转贝塞尔）。
