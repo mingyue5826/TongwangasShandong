@@ -118,7 +118,7 @@ title: 港华燃气
 3. 确认浏览器已强制刷新（`Ctrl/Cmd + Shift + R`）。
 
 功能明细、实体依赖与常见问题见
-[卡片使用说明](custom_components/tongwangas_shandong/tongwangas-shandong-card.md)。
+[卡片使用说明](tongwangas-shandong-card.md)。
 
 
 ## 信息获取方式

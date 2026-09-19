@@ -4,7 +4,7 @@
 
 你根据homeassistant的集成开发规范，生成一个符合要求的ha集成项目。
 
-C:\SynologyDrive\03-个人文件\02-装机资料\homeassistant\HACS\TowngasHA\hztowngas\custom_components\hztowngas项目是一个符合homeassistant集成开发规范的项目，我也要参考他的规范，但是流程需要按我的要求处理
+\HACS\TowngasHA\hztowngas\custom_components\hztowngas项目是一个符合homeassistant集成开发规范的项目，我也要参考他的规范，但是流程需要按我的要求处理
 
 - ha集成项目的DOMAIN=tongwangas_shandong
 - 不确定内容需要确认完成再生成，有问题先问，不要自作主张
@@ -31,7 +31,7 @@ C:\SynologyDrive\03-个人文件\02-装机资料\homeassistant\HACS\TowngasHA\hz
 # orglist.json 文件的来源与存储方式
 
 orglist.json的读取方式以及config_flow的第一步选择区域参考这个项目的config_flow和api的host使用方式：
-C:\SynologyDrive\03-个人文件\02-装机资料\homeassistant\HACS\TowngasHA\hztowngas\custom_components\hztowngas
+\HACS\TowngasHA\hztowngas\custom_components\hztowngas
 
 orglist.json放在项目的集成根目录下，配置流启动时直接读取该文件。
 
